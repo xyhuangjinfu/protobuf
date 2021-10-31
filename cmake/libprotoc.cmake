@@ -82,6 +82,8 @@ set(libprotoc_files
   ${protobuf_source_dir}/src/google/protobuf/compiler/ruby/ruby_generator.cc
   ${protobuf_source_dir}/src/google/protobuf/compiler/subprocess.cc
   ${protobuf_source_dir}/src/google/protobuf/compiler/zip_writer.cc
+  ${protobuf_source_dir}/src/google/protobuf/compiler/cpp2java/cpp2java_generator.cc
+  ${protobuf_source_dir}/src/google/protobuf/compiler/cpp2java/cpp2java_file.cc
 )
 
 set(libprotoc_headers
@@ -108,6 +110,8 @@ set(libprotoc_headers
   ${protobuf_source_dir}/src/google/protobuf/compiler/plugin.pb.h
   ${protobuf_source_dir}/src/google/protobuf/compiler/python/python_generator.h
   ${protobuf_source_dir}/src/google/protobuf/compiler/ruby/ruby_generator.h
+  ${protobuf_source_dir}/src/google/protobuf/compiler/cpp2java/cpp2java_generator.h
+  ${protobuf_source_dir}/src/google/protobuf/compiler/cpp2java/cpp2java_file.h
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
