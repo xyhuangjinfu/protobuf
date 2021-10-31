@@ -38,6 +38,7 @@
 #include <google/protobuf/compiler/objectivec/objectivec_generator.h>
 #include <google/protobuf/compiler/php/php_generator.h>
 #include <google/protobuf/compiler/ruby/ruby_generator.h>
+#include <google/protobuf/compiler/cpp2java/cpp2java_generator.h>
 
 #include <google/protobuf/port_def.inc>
 
@@ -64,6 +65,11 @@ int ProtobufMain(int argc, char* argv[]) {
   java::JavaGenerator java_generator;
   cli.RegisterGenerator("--java_out", "--java_opt", &java_generator,
                         "Generate Java source file.");
+
+  // Proto2 Cpp2Java
+  cpp2java::Cpp2JavaGenerator cpp2java_generator;
+  cli.RegisterGenerator("--cpp2java_out", "--cpp2java_opt", &cpp2java_generator,
+                        "Generate Cpp2Java source file.");
 
   // Proto2 Kotlin
   java::KotlinGenerator kt_generator;
