@@ -14,13 +14,20 @@ public:
 	FileGenerator();
 	~FileGenerator();
 
-	void GenerateFile(const FileDescriptor* file_descriptor, io::Printer& printer);
-	void GenerateMessage(const FileDescriptor* file_descriptor, const Descriptor* descriptor, io::Printer& printer);
-	void GenerateField(const FileDescriptor* file_descriptor, const FieldDescriptor* field_descriptor, io::Printer& printer);
+
+	bool GlobalFileGenerated() { return global_header_file_generated_ && global_cpp_file_generated_; };
+	void GenerateGlobalHeaderFile(const FileDescriptor* file_descriptor, io::Printer& printer);
+	void GenerateGlobalCppFile(const FileDescriptor* file_descriptor, io::Printer& printer);
+
+	void GenerateHeaderFile(const FileDescriptor* file_descriptor, io::Printer& printer);
+	void GenerateCppFile(const FileDescriptor* file_descriptor, io::Printer& printer);
+	void GenerateMessageTransfer(const FileDescriptor* file_descriptor, const Descriptor* descriptor, io::Printer& printer);
+	void GenerateMessageTransferDeclare(const FileDescriptor* file_descriptor, const Descriptor* descriptor, io::Printer& printer);
+	void GenerateFieldTransfer(const FileDescriptor* file_descriptor, const FieldDescriptor* field_descriptor, io::Printer& printer);
 
 private:
-	const std::string GetBinarayClassName(const FileDescriptor* file_descriptor, const Descriptor* descriptor);
-	const std::string GetBinarayClassName(const FileDescriptor* file_descriptor, const EnumDescriptor* enum_descriptor);
+	bool global_header_file_generated_ = false;
+	bool global_cpp_file_generated_ = false;
 
 	GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(FileGenerator);
 };

@@ -15,6 +15,7 @@ namespace javabean {
 // own protocol compiler binary and you want it to support Java Bean output, you
 // can do so by registering an instance of this CodeGenerator with the
 // CommandLineInterface in your main() function.
+// target 2.6.1
 class PROTOC_EXPORT JavaBeanGenerator : public CodeGenerator {
 public:
 	JavaBeanGenerator();

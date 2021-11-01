@@ -84,6 +84,7 @@ set(libprotoc_files
   ${protobuf_source_dir}/src/google/protobuf/compiler/zip_writer.cc
   ${protobuf_source_dir}/src/google/protobuf/compiler/cpp2java/cpp2java_generator.cc
   ${protobuf_source_dir}/src/google/protobuf/compiler/cpp2java/cpp2java_file.cc
+  ${protobuf_source_dir}/src/google/protobuf/compiler/cpp2java/cpp2java_helpers.cc
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_generator.cc
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_file.cc
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_message.cc
@@ -118,6 +119,7 @@ set(libprotoc_headers
   ${protobuf_source_dir}/src/google/protobuf/compiler/ruby/ruby_generator.h
   ${protobuf_source_dir}/src/google/protobuf/compiler/cpp2java/cpp2java_generator.h
   ${protobuf_source_dir}/src/google/protobuf/compiler/cpp2java/cpp2java_file.h
+  ${protobuf_source_dir}/src/google/protobuf/compiler/cpp2java/cpp2java_helpers.h
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_generator.h
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_file.h
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_message.h

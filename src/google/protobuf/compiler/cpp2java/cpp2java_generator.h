@@ -4,8 +4,11 @@
 #include <string>
 #include <google/protobuf/compiler/code_generator.h>
 
+#include <google/protobuf/compiler/cpp2java/cpp2java_file.h>
+
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/port_def.inc>
+
 
 namespace google {
 namespace protobuf {
@@ -16,6 +19,7 @@ namespace cpp2java {
 // own protocol compiler binary and you want it to support Java output, you
 // can do so by registering an instance of this CodeGenerator with the
 // CommandLineInterface in your main() function.
+// target 2.6.1
 class PROTOC_EXPORT Cpp2JavaGenerator : public CodeGenerator {
 public:
 	Cpp2JavaGenerator();
@@ -30,6 +34,8 @@ public:
 	uint64_t GetSupportedFeatures() const override;
 
 private:
+	FileGenerator* file_generator_;
+
 	GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(Cpp2JavaGenerator);
 };
 

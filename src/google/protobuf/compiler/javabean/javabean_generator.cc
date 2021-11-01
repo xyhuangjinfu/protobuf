@@ -1,6 +1,8 @@
 #include <google/protobuf/compiler/javabean/javabean_generator.h>
 
 
+#include <google/protobuf/descriptor.pb.h>
+
 #include <google/protobuf/compiler/javabean/javabean_file.h>
 #include <google/protobuf/compiler/javabean/javabean_helpers.h>
 
@@ -20,6 +22,12 @@ bool JavaBeanGenerator::Generate(const FileDescriptor* file_descriptor,
 																 const std::string& parameter,
 																 GeneratorContext* context,
 																 std::string* error) const {
+	const FileOptions& proto_file_options = file_descriptor->options();
+	if (!proto_file_options.has_java_package()) {
+		*error = "option java_package not exist!";
+		return false;
+	}
+
 	// -----------------------------------------------------------------
 	// parse generator options
 
