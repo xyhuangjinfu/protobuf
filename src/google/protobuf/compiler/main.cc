@@ -39,6 +39,7 @@
 #include <google/protobuf/compiler/php/php_generator.h>
 #include <google/protobuf/compiler/ruby/ruby_generator.h>
 #include <google/protobuf/compiler/cpp2java/cpp2java_generator.h>
+#include <google/protobuf/compiler/javabean/javabean_generator.h>
 
 #include <google/protobuf/port_def.inc>
 
@@ -65,6 +66,11 @@ int ProtobufMain(int argc, char* argv[]) {
   java::JavaGenerator java_generator;
   cli.RegisterGenerator("--java_out", "--java_opt", &java_generator,
                         "Generate Java source file.");
+
+  // Proto2 JavaBean
+  javabean::JavaBeanGenerator javabean_generator;
+  cli.RegisterGenerator("--javabean_out", "--javabean_opt", &javabean_generator,
+                        "Generate Java Bean source file.");
 
   // Proto2 Cpp2Java
   cpp2java::Cpp2JavaGenerator cpp2java_generator;

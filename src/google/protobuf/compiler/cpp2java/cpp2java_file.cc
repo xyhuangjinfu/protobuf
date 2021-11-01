@@ -96,7 +96,9 @@ void FileGenerator::GenerateField(const FileDescriptor* file_descriptor, const F
 
 		printer.Print(variables, "jint $field_name$_cpp = cpp2java(env, cpp_obj->$field_name$());\n");
 		printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, m$capital_field_name$), \"$java_binaray_type_name$\";\n");
-		printer.Print(variables, "SetObjectField(env, obj, $field_name$_field, $field_name$_cpp);\n\n");
+		printer.Print(variables, "jmethodID $field_name$_get_enum = env->GetStaticMethodID(env, cls, \"fromNumber\", \"(I)$java_binaray_type_name$\");\n");
+		printer.Print(variables, "jobject $field_name$_enum = env->CallStaticObjectMethod(env, cls, $field_name$_get_enum, $field_name$_cpp);\n");
+		printer.Print(variables, "SetObjectField(env, obj, $field_name$_field, $field_name$_enum);\n\n");
 	} else if (type == FieldDescriptor::Type::TYPE_GROUP ||
 						 type == FieldDescriptor::Type::TYPE_MESSAGE) {
 		const Descriptor* message_type = field_descriptor->message_type();
