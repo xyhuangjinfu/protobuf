@@ -20,6 +20,7 @@ public:
 
 private:
 	const std::string GetBinarayClassName(const FileDescriptor* file_descriptor, const Descriptor* descriptor);
+	const std::string GetBinarayClassName(const FileDescriptor* file_descriptor, const EnumDescriptor* enum_descriptor);
 
 	GOOGLE_DISALLOW_EVIL_CONSTRUCTORS(FileGenerator);
 };

@@ -91,7 +91,12 @@ void FileGenerator::GenerateField(const FileDescriptor* file_descriptor, const F
 		printer.Print(variables, "jstring $field_name$_str = env->NewStringUTF(env, $field_name$_cpp)\n");
 		printer.Print(variables, "SetObjectField(env, obj, $field_name$_field, $field_name$_str);\n\n");
 	} else if (type == FieldDescriptor::Type::TYPE_ENUM) {
-		// TODO
+		const EnumDescriptor* enum_type = field_descriptor->enum_type();
+		variables["java_binaray_type_name"] = GetBinarayClassName(file_descriptor, enum_type);
+
+		printer.Print(variables, "jint $field_name$_cpp = cpp2java(env, cpp_obj->$field_name$());\n");
+		printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, m$capital_field_name$), \"$java_binaray_type_name$\";\n");
+		printer.Print(variables, "SetObjectField(env, obj, $field_name$_field, $field_name$_cpp);\n\n");
 	} else if (type == FieldDescriptor::Type::TYPE_GROUP ||
 						 type == FieldDescriptor::Type::TYPE_MESSAGE) {
 		const Descriptor* message_type = field_descriptor->message_type();
@@ -109,6 +114,14 @@ const std::string FileGenerator::GetBinarayClassName(const FileDescriptor* file_
 	std::regex pattern_dot("\\.");
 	const std::string outer_class_name = std::regex_replace(java_name_resolver.GetClassName(file_descriptor, true), pattern_dot, "/");
 	const std::string class_name = std::regex_replace(descriptor->full_name(), pattern_dot, "$");
+	return outer_class_name + "$" + class_name;
+}
+
+const std::string FileGenerator::GetBinarayClassName(const FileDescriptor* file_descriptor, const EnumDescriptor* enum_descriptor) {
+	java::ClassNameResolver java_name_resolver;
+	std::regex pattern_dot("\\.");
+	const std::string outer_class_name = std::regex_replace(java_name_resolver.GetClassName(file_descriptor, true), pattern_dot, "/");
+	const std::string class_name = std::regex_replace(enum_descriptor->full_name(), pattern_dot, "$");
 	return outer_class_name + "$" + class_name;
 }
 
