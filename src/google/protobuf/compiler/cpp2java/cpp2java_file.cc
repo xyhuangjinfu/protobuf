@@ -35,6 +35,8 @@ void FileGenerator::GenerateGlobalHeaderFile(const FileDescriptor* file_descript
 	printer.Print(variables, "void init(JavaVM *jvm);\n\n");
 	printer.Print(variables, "/* get class */\n");
 	printer.Print(variables, "jclass GetClass(const char* java_class_name);\n\n");
+	printer.Print(variables, "/* attach current native thread to jvm */\n");
+	printer.Print(variables, "void AttachCurrentThread(JNIEnv* env);\n\n");
 
 	printer.Print(variables, "#endif // CPP2JAVA_H__\n\n");
 }
@@ -53,6 +55,7 @@ void FileGenerator::GenerateGlobalCppFile(const FileDescriptor* file_descriptor,
 	printer.Print(variables, "#include <string>\n");
 	printer.Print(variables, "#include <map>\n\n\n");
 	printer.Print(variables, "std::map<std::string, jclass> class_map;\n");
+	printer.Print(variables, "JavaVM *global_jvm;\n");
 	printer.Print(variables, "JNIEnv *env;\n");
 	printer.Print(variables, "jclass class_loader_class;\n");
 	printer.Print(variables, "jmethodID class_loader_load_class;\n");
@@ -60,6 +63,7 @@ void FileGenerator::GenerateGlobalCppFile(const FileDescriptor* file_descriptor,
 	printer.Print(variables, "/* init env */\n");
 	printer.Print(variables, "void init(JavaVM *jvm) {\n");
 	printer.Indent();
+	printer.Print(variables, "global_jvm = jvm;\n");
 	printer.Print(variables, "jvm->GetEnv((void **) &env, JNI_VERSION_1_4);\n");
 	printer.Print(variables, "class_loader_class = (jclass) env->NewGlobalRef(env->FindClass(\"java/lang/ClassLoader\"));\n");
 	printer.Print(variables, "class_loader_load_class = env->GetMethodID(class_loader_class, \"loadClass\", \"(Ljava/lang/String;)Ljava/lang/Class;\");\n");
@@ -94,6 +98,13 @@ void FileGenerator::GenerateGlobalCppFile(const FileDescriptor* file_descriptor,
 	printer.Print(variables, "return clazz;\n");
 	printer.Outdent();
 	printer.Print(variables, "}\n");
+	printer.Outdent();
+	printer.Print(variables, "}\n\n");
+
+	printer.Print(variables, "/* attach current native thread to jvm */\n");
+	printer.Print(variables, "void AttachCurrentThread(JNIEnv* env) {\n");
+	printer.Indent();
+	printer.Print(variables, "global_jvm->AttachCurrentThread(&env, NULL);\n");
 	printer.Outdent();
 	printer.Print(variables, "}\n\n");
 }
@@ -162,6 +173,7 @@ void FileGenerator::GenerateMessageTransfer(const FileDescriptor* file_descripto
 	printer.Print(variables, "/* $debug_string$ */\n");
 	printer.Print(variables, "jobject cpp2java(JNIEnv* env, const $cpp_class_namespace$::$cpp_class_name$& cpp_obj) {\n");
 	printer.Indent();
+	printer.Print(variables, "AttachCurrentThread(env);\n");
 	printer.Print(variables, "jclass cls = GetClass(\"$java_class_name$\");\n");
 	printer.Print(variables, "jmethodID constructor = env->GetMethodID(cls, \"<init>\", \"()V\");\n");
 	printer.Print(variables, "jobject obj = env->NewObject(cls, constructor);\n");
