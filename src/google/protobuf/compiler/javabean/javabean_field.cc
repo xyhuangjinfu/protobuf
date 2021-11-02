@@ -21,14 +21,18 @@ void GenerateStringField(const FieldDescriptor* field_descriptor, io::Printer* p
 		printer->Print(variables, "private boolean mHas$capitalized_name$;\n");
 		printer->Print(variables, "public boolean has$capitalized_name$() {\n");
 		printer->Indent();
+		printer->Indent();
 		printer->Print(variables, "return mHas$capitalized_name$;\n");
+		printer->Outdent();
 		printer->Outdent();
 		printer->Print(variables, "}\n");
 	}
 	printer->Print(variables, "private java.lang.String m$capitalized_name$;\n");
 	printer->Print(variables, "public java.lang.String get$capitalized_name$() {\n");
 	printer->Indent();
+	printer->Indent();
 	printer->Print(variables, "return m$capitalized_name$;\n");
+	printer->Outdent();
 	printer->Outdent();
 	printer->Print(variables, "}\n");
 }
@@ -42,7 +46,9 @@ void GenerateRepeatedStringField(const FieldDescriptor* field_descriptor, io::Pr
 	printer->Print(variables, "private java.util.List<java.lang.String> m$capitalized_name$ = new java.util.ArrayList<>(0);\n");
 	printer->Print(variables, "public java.util.List<java.lang.String> get$capitalized_name$() {\n");
 	printer->Indent();
+	printer->Indent();
 	printer->Print(variables, "return m$capitalized_name$;\n");
+	printer->Outdent();
 	printer->Outdent();
 	printer->Print(variables, "}\n");
 }
@@ -58,14 +64,18 @@ void GeneratePrimitiveField(const FieldDescriptor* field_descriptor, io::Printer
 		printer->Print(variables, "private boolean mHas$capitalized_name$;\n");
 		printer->Print(variables, "public boolean has$capitalized_name$() {\n");
 		printer->Indent();
+		printer->Indent();
 		printer->Print(variables, "return mHas$capitalized_name$;\n");
+		printer->Outdent();
 		printer->Outdent();
 		printer->Print(variables, "}\n");
 	}
 	printer->Print(variables, "private $type$ m$capitalized_name$;\n");
 	printer->Print(variables, "public $type$ get$capitalized_name$() {\n");
 	printer->Indent();
+	printer->Indent();
 	printer->Print(variables, "return m$capitalized_name$;\n");
+	printer->Outdent();
 	printer->Outdent();
 	printer->Print(variables, "}\n");
 }
@@ -81,7 +91,9 @@ void GenerateRepeatedPrimitiveField(const FieldDescriptor* field_descriptor, io:
 	printer->Print(variables, "private java.util.List<$boxed_type$> m$capitalized_name$ = new java.util.ArrayList<>(0);\n");
 	printer->Print(variables, "public java.util.List<$boxed_type$> get$capitalized_name$() {\n");
 	printer->Indent();
+	printer->Indent();
 	printer->Print(variables, "return m$capitalized_name$;\n");
+	printer->Outdent();
 	printer->Outdent();
 	printer->Print(variables, "}\n");
 }
@@ -97,14 +109,18 @@ void GenerateMessageField(const FieldDescriptor* field_descriptor, io::Printer* 
 		printer->Print(variables, "private boolean mHas$capitalized_name$;\n");
 		printer->Print(variables, "public boolean has$capitalized_name$() {\n");
 		printer->Indent();
+		printer->Indent();
 		printer->Print(variables, "return mHas$capitalized_name$;\n");
+		printer->Outdent();
 		printer->Outdent();
 		printer->Print(variables, "}\n");
 	}
 	printer->Print(variables, "private $type$ m$capitalized_name$;\n");
 	printer->Print(variables, "public $type$ get$capitalized_name$() {\n");
 	printer->Indent();
+	printer->Indent();
 	printer->Print(variables, "return m$capitalized_name$;\n");
+	printer->Outdent();
 	printer->Outdent();
 	printer->Print(variables, "}\n");
 
@@ -120,7 +136,9 @@ void GenerateRepeatedMessageField(const FieldDescriptor* field_descriptor, io::P
 	printer->Print(variables, "private java.util.List<$type$> m$capitalized_name$ = new java.util.ArrayList<>(0);\n");
 	printer->Print(variables, "public java.util.List<$type$> get$capitalized_name$() {\n");
 	printer->Indent();
+	printer->Indent();
 	printer->Print(variables, "return m$capitalized_name$;\n");
+	printer->Outdent();
 	printer->Outdent();
 	printer->Print(variables, "}\n");
 }
@@ -136,14 +154,18 @@ void GenerateEnumField(const FieldDescriptor* field_descriptor, io::Printer* pri
 		printer->Print(variables, "private boolean mHas$capitalized_name$;\n");
 		printer->Print(variables, "public boolean has$capitalized_name$() {\n");
 		printer->Indent();
+		printer->Indent();
 		printer->Print(variables, "return mHas$capitalized_name$;\n");
+		printer->Outdent();
 		printer->Outdent();
 		printer->Print(variables, "}\n");
 	}
 	printer->Print(variables, "private $type$ m$capitalized_name$;\n");
 	printer->Print(variables, "public $type$ get$capitalized_name$() {\n");
 	printer->Indent();
+	printer->Indent();
 	printer->Print(variables, "return m$capitalized_name$;\n");
+	printer->Outdent();
 	printer->Outdent();
 	printer->Print(variables, "}\n");
 }
@@ -158,7 +180,9 @@ void GenerateRepeatedEnumField(const FieldDescriptor* field_descriptor, io::Prin
 	printer->Print(variables, "private java.util.List<$type$> m$capitalized_name$ = new java.util.ArrayList<>(0);\n");
 	printer->Print(variables, "public java.util.List<$type$> get$capitalized_name$() {\n");
 	printer->Indent();
+	printer->Indent();
 	printer->Print(variables, "return m$capitalized_name$;\n");
+	printer->Outdent();
 	printer->Outdent();
 	printer->Print(variables, "}\n");
 }
@@ -200,7 +224,9 @@ void GenerateMapField(const FieldDescriptor* field_descriptor, io::Printer* prin
 	printer->Print(variables, "private java.util.Map<$boxed_key_type$, $boxed_value_type$> m$capitalized_name$ = new java.util.HashMap<>(0);\n");
 	printer->Print(variables, "public java.util.Map<$boxed_key_type$, $boxed_value_type$> get$capitalized_name$() {\n");
 	printer->Indent();
+	printer->Indent();
 	printer->Print(variables, "return m$capitalized_name$;\n");
+	printer->Outdent();
 	printer->Outdent();
 	printer->Print(variables, "}\n");
 }

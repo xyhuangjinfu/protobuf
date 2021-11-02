@@ -5,14 +5,14 @@
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/io/printer.h>
 
-#include <google/protobuf/compiler/javabean/javabean_message.h>
-
 namespace google {
 namespace protobuf {
 namespace compiler {
 namespace javabean {
 
 void GenerateJavaBeanFile(const FileDescriptor* file_descriptor, io::Printer* printer);
+void GenerateMessageClass(const Descriptor* descriptor, io::Printer* printer);
+void GenerateEnumClass(const EnumDescriptor* descriptor, io::Printer* printer);
 
 }  // namespace javabean
 }  // namespace compiler

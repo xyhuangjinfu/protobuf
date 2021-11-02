@@ -87,9 +87,7 @@ set(libprotoc_files
   ${protobuf_source_dir}/src/google/protobuf/compiler/cpp2java/cpp2java_helpers.cc
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_generator.cc
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_file.cc
-  ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_message.cc
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_field.cc
-  ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_enum.cc
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_helpers.cc
 )
 
@@ -122,9 +120,7 @@ set(libprotoc_headers
   ${protobuf_source_dir}/src/google/protobuf/compiler/cpp2java/cpp2java_helpers.h
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_generator.h
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_file.h
-  ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_message.h
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_field.h
-  ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_enum.h
   ${protobuf_source_dir}/src/google/protobuf/compiler/javabean/javabean_helpers.h
 )
 
