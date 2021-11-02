@@ -87,6 +87,24 @@ void GenerateRepeatedPrimitiveField(const FieldDescriptor* field_descriptor, io:
 	variables["capitalized_name"] = java::UnderscoresToCapitalizedCamelCase(field_descriptor);
 	variables["debug_string"] = field_descriptor->DebugString();
 
+	if (variables["type"] == "int"
+			|| variables["type"] == "long"
+			|| variables["type"] == "float"
+			|| variables["type"] == "double"
+			|| variables["type"] == "boolean") {
+		printer->Print(variables, "/** $debug_string$ */\n");
+		printer->Print(variables, "private $type$[] m$capitalized_name$;\n");
+		printer->Print(variables, "public $type$[] get$capitalized_name$() {\n");
+		printer->Indent();
+		printer->Indent();
+		printer->Print(variables, "return m$capitalized_name$;\n");
+		printer->Outdent();
+		printer->Outdent();
+		printer->Print(variables, "}\n");
+
+		return;
+	}
+
 	printer->Print(variables, "/** $debug_string$ */\n");
 	printer->Print(variables, "private java.util.List<$boxed_type$> m$capitalized_name$ = new java.util.ArrayList<>(0);\n");
 	printer->Print(variables, "public java.util.List<$boxed_type$> get$capitalized_name$() {\n");

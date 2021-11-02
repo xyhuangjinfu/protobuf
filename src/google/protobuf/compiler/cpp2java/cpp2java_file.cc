@@ -1,4 +1,4 @@
-#include <google/protobuf/compiler/cpp2java/cpp2java_file.h>
+﻿#include <google/protobuf/compiler/cpp2java/cpp2java_file.h>
 
 
 #include <regex>
@@ -31,12 +31,14 @@ void FileGenerator::GenerateGlobalHeaderFile(const FileDescriptor* file_descript
 
 	printer.Print(variables, "#include <jni.h>\n\n");
 
-	printer.Print(variables, "/* init env */\n");
-	printer.Print(variables, "void init(JavaVM *jvm);\n\n");
+	printer.Print(variables, "/* init cpp2java.\nmust call this function in JNI_OnLoad.*/\n");
+	printer.Print(variables, "void InitCpp2Java(JavaVM *jvm);\n\n");
 	printer.Print(variables, "/* get class */\n");
-	printer.Print(variables, "jclass GetClass(const char* java_class_name);\n\n");
+	printer.Print(variables, "jclass GetClass(JNIEnv* env, const char* java_class_name);\n\n");
 	printer.Print(variables, "/* attach current native thread to jvm */\n");
-	printer.Print(variables, "void AttachCurrentThread(JNIEnv* env);\n\n");
+	printer.Print(variables, "bool AttachCurrentThread(JNIEnv* env);\n\n");
+	printer.Print(variables, "/* detach current native thread from jvm */\n");
+	printer.Print(variables, "void DetachCurrentThread();\n\n");
 
 	printer.Print(variables, "#endif // CPP2JAVA_H__\n\n");
 }
@@ -54,17 +56,17 @@ void FileGenerator::GenerateGlobalCppFile(const FileDescriptor* file_descriptor,
 	printer.Print(variables, "#include \"cpp2java.h\"\n\n\n");
 	printer.Print(variables, "#include <string>\n");
 	printer.Print(variables, "#include <map>\n\n\n");
-	printer.Print(variables, "std::map<std::string, jclass> class_map;\n");
-	printer.Print(variables, "JavaVM *global_jvm;\n");
-	printer.Print(variables, "JNIEnv *env;\n");
-	printer.Print(variables, "jclass class_loader_class;\n");
-	printer.Print(variables, "jmethodID class_loader_load_class;\n");
-	printer.Print(variables, "jobject class_loader;\n\n");
-	printer.Print(variables, "/* init env */\n");
-	printer.Print(variables, "void init(JavaVM *jvm) {\n");
+	printer.Print(variables, "static std::map<std::string, jclass> class_map;\n");
+	printer.Print(variables, "static JavaVM *jvm_global;\n");
+	printer.Print(variables, "static jmethodID class_loader_load_class;\n");
+	printer.Print(variables, "static jobject class_loader;\n\n");
+	printer.Print(variables, "/* init cpp2java.\nmust call this function in JNI_OnLoad.*/\n");
+	printer.Print(variables, "void InitCpp2Java(JavaVM *jvm) {\n");
 	printer.Indent();
-	printer.Print(variables, "global_jvm = jvm;\n");
-	printer.Print(variables, "jvm->GetEnv((void **) &env, JNI_VERSION_1_4);\n");
+	printer.Print(variables, "jvm_global = jvm;\n");
+	printer.Print(variables, "JNIEnv *env;\n");
+	printer.Print(variables, "jvm->GetEnv((void **) &env, JNI_VERSION_1_6);\n");
+	printer.Print(variables, "jclass class_loader_class;\n");
 	printer.Print(variables, "class_loader_class = (jclass) env->NewGlobalRef(env->FindClass(\"java/lang/ClassLoader\"));\n");
 	printer.Print(variables, "class_loader_load_class = env->GetMethodID(class_loader_class, \"loadClass\", \"(Ljava/lang/String;)Ljava/lang/Class;\");\n");
 	if (file_descriptor->message_type_count() > 0) {
@@ -85,7 +87,7 @@ void FileGenerator::GenerateGlobalCppFile(const FileDescriptor* file_descriptor,
 	printer.Print(variables, "}\n\n");
 
 	printer.Print(variables, "/* get class */\n");
-	printer.Print(variables, "jclass GetClass(const char* java_class_name) {\n");
+	printer.Print(variables, "jclass GetClass(JNIEnv* env, const char* java_class_name) {\n");
 	printer.Indent();
 	printer.Print(variables, "if (class_map.count(java_class_name) > 0) {\n");
 	printer.Indent();
@@ -102,9 +104,26 @@ void FileGenerator::GenerateGlobalCppFile(const FileDescriptor* file_descriptor,
 	printer.Print(variables, "}\n\n");
 
 	printer.Print(variables, "/* attach current native thread to jvm */\n");
-	printer.Print(variables, "void AttachCurrentThread(JNIEnv* env) {\n");
+	printer.Print(variables, "bool AttachCurrentThread(JNIEnv* env) {\n");
 	printer.Indent();
-	printer.Print(variables, "global_jvm->AttachCurrentThread(&env, NULL);\n");
+	printer.Print(variables, "if (jvm_global->GetEnv((void **) &env, JNI_VERSION_1_6) == JNI_OK) {\n");
+	printer.Indent();
+	printer.Print(variables, "return false;\n");
+	printer.Outdent();
+	printer.Print(variables, "}\n");
+	printer.Print(variables, "if (jvm_global->AttachCurrentThread(&env, NULL) == JNI_OK) {\n");
+	printer.Indent();
+	printer.Print(variables, "return true;\n");
+	printer.Outdent();
+	printer.Print(variables, "}\n");
+	printer.Print(variables, "return false;\n");
+	printer.Outdent();
+	printer.Print(variables, "}\n\n");
+
+	printer.Print(variables, "/* detach current native thread from jvm */\n");
+	printer.Print(variables, "void DetachCurrentThread() {\n");
+	printer.Indent();
+	printer.Print(variables, "jvm_global->DetachCurrentThread();\n");
 	printer.Outdent();
 	printer.Print(variables, "}\n\n");
 }
@@ -171,10 +190,13 @@ void FileGenerator::GenerateMessageTransfer(const FileDescriptor* file_descripto
 	variables["debug_string"] = descriptor->DebugString();
 
 	printer.Print(variables, "/* $debug_string$ */\n");
-	printer.Print(variables, "jobject cpp2java(JNIEnv* env, const $cpp_class_namespace$::$cpp_class_name$& cpp_obj) {\n");
+	printer.Print(variables, "jobject cpp2java(const $cpp_class_namespace$::$cpp_class_name$& cpp_obj) {\n");
 	printer.Indent();
-	printer.Print(variables, "AttachCurrentThread(env);\n");
-	printer.Print(variables, "jclass cls = GetClass(\"$java_class_name$\");\n");
+	printer.Print(variables, "JNIEnv *env;\n");
+	printer.Print(variables, "bool attach_success = AttachCurrentThread(env);\n");
+	printer.Print(variables, "\n");
+
+	printer.Print(variables, "jclass cls = GetClass(env, \"$java_class_name$\");\n");
 	printer.Print(variables, "jmethodID constructor = env->GetMethodID(cls, \"<init>\", \"()V\");\n");
 	printer.Print(variables, "jobject obj = env->NewObject(cls, constructor);\n");
 
@@ -183,6 +205,13 @@ void FileGenerator::GenerateMessageTransfer(const FileDescriptor* file_descripto
 		const FieldDescriptor* field_descriptor = descriptor->field(i);
 		GenerateFieldTransfer(file_descriptor, field_descriptor, printer);
 	}
+	printer.Print(variables, "\n");
+
+	printer.Print(variables, "if (attach_success) {\n");
+	printer.Indent();
+	printer.Print(variables, "DetachCurrentThread();\n");
+	printer.Outdent();
+	printer.Print(variables, "}\n");
 	printer.Print(variables, "\n");
 
 	printer.Print(variables, "return obj;\n");
@@ -204,7 +233,7 @@ void FileGenerator::GenerateMessageTransferDeclare(const FileDescriptor* file_de
 	variables["debug_string"] = descriptor->DebugString();
 
 	printer.Print(variables, "/* $debug_string$ */\n");
-	printer.Print(variables, "jobject cpp2java(JNIEnv* env, const $cpp_class_namespace$::$cpp_class_name$& cpp_obj);\n\n");
+	printer.Print(variables, "jobject cpp2java(const $cpp_class_namespace$::$cpp_class_name$& cpp_obj);\n\n");
 
 	// nest type
 	for (int i = 0; i < descriptor->nested_type_count(); i++) {
@@ -230,20 +259,10 @@ void FileGenerator::GenerateFieldTransfer(const FileDescriptor* file_descriptor,
 		printer.Print(variables, "/* $debug_string$ */\n");
 		if (field_descriptor->is_repeated()) {
 			printer.Print(variables, "jint $field_name$_cpp_size = cpp_obj.$cpp_field_name$_size();\n");
-			printer.Print(variables, "jclass $field_name$_list_class = GetClass(\"java.util.ArrayList\");\n");
-			printer.Print(variables, "jmethodID $field_name$_list_constructor = env->GetMethodID($field_name$_list_class, \"<init>\", \"(I)V\");\n");
-			printer.Print(variables, "jobject $field_name$_list = env->NewObject($field_name$_list_class, $field_name$_list_constructor, $field_name$_cpp_size);\n");
-			printer.Print(variables, "jmethodID $field_name$_list_add = env->GetMethodID($field_name$_list_class, \"add\", \"(Ljava/lang/Object;)Z\");\n");
-			printer.Print(variables, "jclass $field_name$_integer_class = GetClass(\"java.lang.Integer\");\n");
-			printer.Print(variables, "jmethodID $field_name$_integer_constructor = env->GetMethodID($field_name$_integer_class, \"<init>\", \"(I)V\");\n");
-			printer.Print(variables, "for (int i = 0; i < $field_name$_cpp_size; i++) {\n");
-			printer.Indent();
-			printer.Print(variables, "jobject $field_name$_integer_obj = env->NewObject($field_name$_integer_class, $field_name$_integer_constructor, cpp_obj.$cpp_field_name$(i));\n");
-			printer.Print(variables, "env->CallBooleanMethod($field_name$_list, $field_name$_list_add, $field_name$_integer_obj);\n");
-			printer.Outdent();
-			printer.Print(variables, "}\n");
-			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"Ljava/util/List;\");\n");
-			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_list);\n\n");
+			printer.Print(variables, "jintArray $field_name$_array = env->NewIntArray($field_name$_cpp_size);\n");
+			printer.Print(variables, "env->SetIntArrayRegion($field_name$_array, 0, $field_name$_cpp_size, cpp_obj.$cpp_field_name$().data());\n");
+			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"[I\");\n");
+			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_array);\n\n");
 		} else {
 			if (cpp::HasHasbit(field_descriptor)) {
 				printer.Print(variables, "jboolean has_$field_name$_cpp = cpp_obj.has_$cpp_field_name$();\n");
@@ -262,20 +281,10 @@ void FileGenerator::GenerateFieldTransfer(const FileDescriptor* file_descriptor,
 		printer.Print(variables, "/* $debug_string$ */\n");
 		if (field_descriptor->is_repeated()) {
 			printer.Print(variables, "jint $field_name$_cpp_size = cpp_obj.$cpp_field_name$_size();\n");
-			printer.Print(variables, "jclass $field_name$_list_class = GetClass(\"java.util.ArrayList\");\n");
-			printer.Print(variables, "jmethodID $field_name$_list_constructor = env->GetMethodID($field_name$_list_class, \"<init>\", \"(I)V\");\n");
-			printer.Print(variables, "jobject $field_name$_list = env->NewObject($field_name$_list_class, $field_name$_list_constructor, $field_name$_cpp_size);\n");
-			printer.Print(variables, "jmethodID $field_name$_list_add = env->GetMethodID($field_name$_list_class, \"add\", \"(Ljava/lang/Object;)Z\");\n");
-			printer.Print(variables, "jclass $field_name$_long_class = GetClass(\"java.lang.Long\");\n");
-			printer.Print(variables, "jmethodID $field_name$_long_constructor = env->GetMethodID($field_name$_long_class, \"<init>\", \"(J)V\");\n");
-			printer.Print(variables, "for (int i = 0; i < $field_name$_cpp_size; i++) {\n");
-			printer.Indent();
-			printer.Print(variables, "jobject $field_name$_long_obj = env->NewObject($field_name$_long_class, $field_name$_long_constructor, cpp_obj.$cpp_field_name$(i));\n");
-			printer.Print(variables, "env->CallBooleanMethod($field_name$_list, $field_name$_list_add, $field_name$_long_obj);\n");
-			printer.Outdent();
-			printer.Print(variables, "}\n");
-			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"Ljava/util/List;\");\n");
-			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_list);\n\n");
+			printer.Print(variables, "jlongArray $field_name$_array = env->NewLongArray($field_name$_cpp_size);\n");
+			printer.Print(variables, "env->SetLongArrayRegion($field_name$_array, 0, $field_name$_cpp_size, cpp_obj.$cpp_field_name$().data());\n");
+			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"[J\");\n");
+			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_array);\n\n");
 		} else {
 			if (cpp::HasHasbit(field_descriptor)) {
 				printer.Print(variables, "jboolean has_$field_name$_cpp = cpp_obj.has_$cpp_field_name$();\n");
@@ -290,20 +299,10 @@ void FileGenerator::GenerateFieldTransfer(const FileDescriptor* file_descriptor,
 		printer.Print(variables, "/* $debug_string$ */\n");
 		if (field_descriptor->is_repeated()) {
 			printer.Print(variables, "jint $field_name$_cpp_size = cpp_obj.$cpp_field_name$_size();\n");
-			printer.Print(variables, "jclass $field_name$_list_class = GetClass(\"java/util/ArrayList\");\n");
-			printer.Print(variables, "jmethodID $field_name$_list_constructor = env->GetMethodID($field_name$_list_class, \"<init>\", \"(I)V\");\n");
-			printer.Print(variables, "jobject $field_name$_list = env->NewObject($field_name$_list_class, $field_name$_list_constructor, $field_name$_cpp_size);\n");
-			printer.Print(variables, "jmethodID $field_name$_list_add = env->GetMethodID($field_name$_list_class, \"add\", \"(Ljava/lang/Object;)Z\");\n");
-			printer.Print(variables, "jclass $field_name$_float_class = GetClass(\"java.lang.Float\");\n");
-			printer.Print(variables, "jmethodID $field_name$_float_constructor = env->GetMethodID($field_name$_float_class, \"<init>\", \"(F)V\");\n");
-			printer.Print(variables, "for (int i = 0; i < $field_name$_cpp_size; i++) {\n");
-			printer.Indent();
-			printer.Print(variables, "jobject $field_name$_float_obj = env->NewObject($field_name$_float_class, $field_name$_float_constructor, cpp_obj.$cpp_field_name$(i));\n");
-			printer.Print(variables, "env->CallBooleanMethod($field_name$_list, $field_name$_list_add, $field_name$_float_obj);\n");
-			printer.Outdent();
-			printer.Print(variables, "}\n");
-			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"Ljava/util/List;\");\n");
-			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_list);\n\n");
+			printer.Print(variables, "jfloatArray $field_name$_array = env->NewFloatArray($field_name$_cpp_size);\n");
+			printer.Print(variables, "env->SetFloatArrayRegion($field_name$_array, 0, $field_name$_cpp_size, cpp_obj.$cpp_field_name$().data());\n");
+			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"[F\");\n");
+			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_array);\n\n");
 		} else {
 			if (cpp::HasHasbit(field_descriptor)) {
 				printer.Print(variables, "jboolean has_$field_name$_cpp = cpp_obj.has_$cpp_field_name$();\n");
@@ -318,20 +317,10 @@ void FileGenerator::GenerateFieldTransfer(const FileDescriptor* file_descriptor,
 		printer.Print(variables, "/* $debug_string$ */\n");
 		if (field_descriptor->is_repeated()) {
 			printer.Print(variables, "jint $field_name$_cpp_size = cpp_obj.$cpp_field_name$_size();\n");
-			printer.Print(variables, "jclass $field_name$_list_class = GetClass(\"java.util.ArrayList\");\n");
-			printer.Print(variables, "jmethodID $field_name$_list_constructor = env->GetMethodID($field_name$_list_class, \"<init>\", \"(I)V\");\n");
-			printer.Print(variables, "jobject $field_name$_list = env->NewObject($field_name$_list_class, $field_name$_list_constructor, $field_name$_cpp_size);\n");
-			printer.Print(variables, "jmethodID $field_name$_list_add = env->GetMethodID($field_name$_list_class, \"add\", \"(Ljava/lang/Object;)Z\");\n");
-			printer.Print(variables, "jclass $field_name$_double_class = GetClass(\"java.lang.Double\");\n");
-			printer.Print(variables, "jmethodID $field_name$_double_constructor = env->GetMethodID($field_name$_double_class, \"<init>\", \"(D)V\");\n");
-			printer.Print(variables, "for (int i = 0; i < $field_name$_cpp_size; i++) {\n");
-			printer.Indent();
-			printer.Print(variables, "jobject $field_name$_double_obj = env->NewObject($field_name$_double_class, $field_name$_double_constructor, cpp_obj.$cpp_field_name$(i));\n");
-			printer.Print(variables, "env->CallBooleanMethod($field_name$_list, $field_name$_list_add, $field_name$_double_obj);\n");
-			printer.Outdent();
-			printer.Print(variables, "}\n");
-			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"Ljava/util/List;\");\n");
-			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_list);\n\n");
+			printer.Print(variables, "jdoubleArray $field_name$_array = env->NewDoubleArray($field_name$_cpp_size);\n");
+			printer.Print(variables, "env->SetDoubleArrayRegion($field_name$_array, 0, $field_name$_cpp_size, cpp_obj.$cpp_field_name$().data());\n");
+			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"[D\");\n");
+			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_array);\n\n");
 		} else {
 			if (cpp::HasHasbit(field_descriptor)) {
 				printer.Print(variables, "jboolean has_$field_name$_cpp = cpp_obj.has_$cpp_field_name$();\n");
@@ -346,20 +335,10 @@ void FileGenerator::GenerateFieldTransfer(const FileDescriptor* file_descriptor,
 		printer.Print(variables, "/* $debug_string$ */\n");
 		if (field_descriptor->is_repeated()) {
 			printer.Print(variables, "jint $field_name$_cpp_size = cpp_obj.$cpp_field_name$_size();\n");
-			printer.Print(variables, "jclass $field_name$_list_class = GetClass(\"java.util.ArrayList\");\n");
-			printer.Print(variables, "jmethodID $field_name$_list_constructor = env->GetMethodID($field_name$_list_class, \"<init>\", \"(I)V\");\n");
-			printer.Print(variables, "jobject $field_name$_list = env->NewObject($field_name$_list_class, $field_name$_list_constructor, $field_name$_cpp_size);\n");
-			printer.Print(variables, "jmethodID $field_name$_list_add = env->GetMethodID($field_name$_list_class, \"add\", \"(Ljava/lang/Object;)Z\");\n");
-			printer.Print(variables, "jclass $field_name$_boolean_class = GetClass(\"java.lang.Boolean\");\n");
-			printer.Print(variables, "jmethodID $field_name$_boolean_constructor = env->GetMethodID($field_name$_boolean_class, \"<init>\", \"(Z)V\");\n");
-			printer.Print(variables, "for (int i = 0; i < $field_name$_cpp_size; i++) {\n");
-			printer.Indent();
-			printer.Print(variables, "jobject $field_name$_boolean_obj = env->NewObject($field_name$_boolean_class, $field_name$_boolean_constructor, cpp_obj.$cpp_field_name$(i));\n");
-			printer.Print(variables, "env->CallBooleanMethod($field_name$_list, $field_name$_list_add, $field_name$_boolean_obj);\n");
-			printer.Outdent();
-			printer.Print(variables, "}\n");
-			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"Ljava/util/List;\");\n");
-			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_list);\n\n");
+			printer.Print(variables, "jbooleanArray $field_name$_array = env->NewBooleanArray($field_name$_cpp_size);\n");
+			printer.Print(variables, "env->SetBooleanArrayRegion($field_name$_array, 0, $field_name$_cpp_size, cpp_obj.$cpp_field_name$().data());\n");
+			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"[Z\");\n");
+			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_array);\n\n");
 		} else {
 			if (cpp::HasHasbit(field_descriptor)) {
 				printer.Print(variables, "jboolean has_$field_name$_cpp = cpp_obj.has_$cpp_field_name$();\n");
@@ -374,7 +353,7 @@ void FileGenerator::GenerateFieldTransfer(const FileDescriptor* file_descriptor,
 		printer.Print(variables, "/* $debug_string$ */\n");
 		if (field_descriptor->is_repeated()) {
 			printer.Print(variables, "jint $field_name$_cpp_size = cpp_obj.$cpp_field_name$_size();\n");
-			printer.Print(variables, "jclass $field_name$_list_class = GetClass(\"java.util.ArrayList\");\n");
+			printer.Print(variables, "jclass $field_name$_list_class = GetClass(env, \"java.util.ArrayList\");\n");
 			printer.Print(variables, "jmethodID $field_name$_list_constructor = env->GetMethodID($field_name$_list_class, \"<init>\", \"(I)V\");\n");
 			printer.Print(variables, "jobject $field_name$_list = env->NewObject($field_name$_list_class, $field_name$_list_constructor, $field_name$_cpp_size);\n");
 			printer.Print(variables, "jmethodID $field_name$_list_add = env->GetMethodID($field_name$_list_class, \"add\", \"(Ljava/lang/Object;)Z\");\n");
@@ -398,6 +377,36 @@ void FileGenerator::GenerateFieldTransfer(const FileDescriptor* file_descriptor,
 			printer.Print(variables, "jstring $field_name$_str = env->NewStringUTF($field_name$_cpp);\n");
 			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_str);\n\n");
 		}
+	} else if (type == FieldDescriptor::Type::TYPE_BYTES) {
+		printer.Print(variables, "/* $debug_string$ */\n");
+		if (field_descriptor->is_repeated()) {
+			printer.Print(variables, "jint $field_name$_cpp_size = cpp_obj.$cpp_field_name$_size();\n");
+			printer.Print(variables, "jclass $field_name$_list_class = GetClass(env, \"java.util.ArrayList\");\n");
+			printer.Print(variables, "jmethodID $field_name$_list_constructor = env->GetMethodID($field_name$_list_class, \"<init>\", \"(I)V\");\n");
+			printer.Print(variables, "jobject $field_name$_list = env->NewObject($field_name$_list_class, $field_name$_list_constructor, $field_name$_cpp_size);\n");
+			printer.Print(variables, "jmethodID $field_name$_list_add = env->GetMethodID($field_name$_list_class, \"add\", \"(Ljava/lang/Object;)Z\");\n");
+			printer.Print(variables, "for (int i = 0; i < $field_name$_cpp_size; i++) {\n");
+			printer.Indent();
+			printer.Print(variables, "int $field_name$_array_size = cpp_obj.$cpp_field_name$(i).size();\n");
+			printer.Print(variables, "jbyteArray $field_name$_array = env->NewByteArray($field_name$_array_size);\n");
+			printer.Print(variables, "env->SetByteArrayRegion($field_name$_array, 0, $field_name$_array_size, (const jbyte *) cpp_obj.$cpp_field_name$(i).data());\n");
+			printer.Print(variables, "env->CallBooleanMethod($field_name$_list, $field_name$_list_add, $field_name$_array);\n");
+			printer.Outdent();
+			printer.Print(variables, "}\n");
+			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"Ljava/util/List;\");\n");
+			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_list);\n\n");
+		} else {
+			if (cpp::HasHasbit(field_descriptor)) {
+				printer.Print(variables, "jboolean has_$field_name$_cpp = cpp_obj.has_$cpp_field_name$();\n");
+				printer.Print(variables, "jfieldID has_$field_name$_field = env->GetFieldID(cls, \"$java_has_field_name$\", \"Z\");\n");
+				printer.Print(variables, "env->SetBooleanField(obj, has_$field_name$_field, has_$field_name$_cpp);\n\n");
+			}
+			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"[B\");\n");
+			printer.Print(variables, "int $field_name$_array_size = cpp_obj.$cpp_field_name$().size();\n");
+			printer.Print(variables, "jbyteArray $field_name$_array = env->NewByteArray($field_name$_array_size);\n");
+			printer.Print(variables, "env->SetByteArrayRegion($field_name$_array, 0, $field_name$_array_size, (const jbyte *) cpp_obj.$cpp_field_name$().data());\n");
+			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_array);\n\n");
+		}
 	} else if (type == FieldDescriptor::Type::TYPE_ENUM) {
 		const EnumDescriptor* enum_type = field_descriptor->enum_type();
 		variables["java_binary_type_name"] = GetJavaBinaryClassName(enum_type->file(), enum_type);
@@ -406,11 +415,11 @@ void FileGenerator::GenerateFieldTransfer(const FileDescriptor* file_descriptor,
 		printer.Print(variables, "/* $debug_string$ */\n");
 		if (field_descriptor->is_repeated()) {
 			printer.Print(variables, "jint $field_name$_cpp_size = cpp_obj.$cpp_field_name$_size();\n");
-			printer.Print(variables, "jclass $field_name$_list_class = GetClass(\"java.util.ArrayList\");\n");
+			printer.Print(variables, "jclass $field_name$_list_class = GetClass(env, \"java.util.ArrayList\");\n");
 			printer.Print(variables, "jmethodID $field_name$_list_constructor = env->GetMethodID($field_name$_list_class, \"<init>\", \"(I)V\");\n");
 			printer.Print(variables, "jobject $field_name$_list = env->NewObject($field_name$_list_class, $field_name$_list_constructor, $field_name$_cpp_size);\n");
 			printer.Print(variables, "jmethodID $field_name$_list_add = env->GetMethodID($field_name$_list_class, \"add\", \"(Ljava/lang/Object;)Z\");\n");
-			printer.Print(variables, "jclass $field_name$_enum_class = GetClass(\"$java_class_name$\");\n");
+			printer.Print(variables, "jclass $field_name$_enum_class = GetClass(env, \"$java_class_name$\");\n");
 			printer.Print(variables, "for (int i = 0; i < $field_name$_cpp_size; i++) {\n");
 			printer.Indent();
 			printer.Print(variables, "jint $field_name$_cpp = cpp_obj.$cpp_field_name$(i);\n");
@@ -427,7 +436,7 @@ void FileGenerator::GenerateFieldTransfer(const FileDescriptor* file_descriptor,
 				printer.Print(variables, "jfieldID has_$field_name$_field = env->GetFieldID(cls, \"$java_has_field_name$\", \"Z\");\n");
 				printer.Print(variables, "env->SetBooleanField(obj, has_$field_name$_field, has_$field_name$_cpp);\n\n");
 			}
-			printer.Print(variables, "jclass $field_name$_cls = GetClass(\"$java_class_name$\");\n");
+			printer.Print(variables, "jclass $field_name$_cls = GetClass(env, \"$java_class_name$\");\n");
 			printer.Print(variables, "jint $field_name$_cpp = cpp_obj.$cpp_field_name$();\n");
 			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"L$java_binary_type_name$;\");\n");
 			printer.Print(variables, "jmethodID $field_name$_get_enum = env->GetStaticMethodID($field_name$_cls, \"fromNumber\", \"(I)L$java_binary_type_name$;\");\n");
@@ -442,28 +451,16 @@ void FileGenerator::GenerateFieldTransfer(const FileDescriptor* file_descriptor,
 		printer.Print(variables, "/* $debug_string$ */\n");
 		if (field_descriptor->is_repeated()) {
 			if (field_descriptor->message_type()->options().map_entry()) {
-				// TODO
-				//printer.Print(variables, "jint $field_name$_cpp_size = cpp_obj.$cpp_field_name$_size();\n");
-				//printer.Print(variables, "jclass $field_name$_map_class = GetClass(\"java.util.HashMap\");\n");
-				//printer.Print(variables, "jmethodID $field_name$_map_constructor = env->GetMethodID(cls, \"<init>\", \"(I)V\");\n");
-				//printer.Print(variables, "jobject $field_name$_map = env->NewObject(cls, $field_name$_map_constructor, $field_name$_cpp_size);\n");
-				//printer.Print(variables, "jmethodID $field_name$_map_put = env->GetMethodID(cls, \"put\", \"(java/lang/Object;java/lang/Object)java/lang/Object\");\n");
-				//printer.Print(variables, "for (int i = 0; i < $field_name$_cpp_size; i++) {\n");
-				//printer.Indent();
-				//printer.Print(variables, "env->CallObjectMethod(cls, $field_name$_map, $field_name$_map_put, cpp_obj.$cpp_field_name$(i));\n");
-				//printer.Outdent();
-				//printer.Print(variables, "}\n");
-				//printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\"), \"I\";\n");
-				//printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_map);\n\n");
+				// TODO proto2不支持map
 			} else {
 				printer.Print(variables, "jint $field_name$_cpp_size = cpp_obj.$cpp_field_name$_size();\n");
-				printer.Print(variables, "jclass $field_name$_list_class = GetClass(\"java.util.ArrayList\");\n");
+				printer.Print(variables, "jclass $field_name$_list_class = GetClass(env, \"java.util.ArrayList\");\n");
 				printer.Print(variables, "jmethodID $field_name$_list_constructor = env->GetMethodID($field_name$_list_class, \"<init>\", \"(I)V\");\n");
 				printer.Print(variables, "jobject $field_name$_list = env->NewObject($field_name$_list_class, $field_name$_list_constructor, $field_name$_cpp_size);\n");
 				printer.Print(variables, "jmethodID $field_name$_list_add = env->GetMethodID($field_name$_list_class, \"add\", \"(Ljava/lang/Object;)Z\");\n");
 				printer.Print(variables, "for (int i = 0; i < $field_name$_cpp_size; i++) {\n");
 				printer.Indent();
-				printer.Print(variables, "env->CallBooleanMethod($field_name$_list, $field_name$_list_add, cpp2java(env, cpp_obj.$cpp_field_name$(i)));\n");
+				printer.Print(variables, "env->CallBooleanMethod($field_name$_list, $field_name$_list_add, cpp2java(cpp_obj.$cpp_field_name$(i)));\n");
 				printer.Outdent();
 				printer.Print(variables, "}\n");
 				printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"Ljava/util/List;\");\n");
@@ -475,7 +472,7 @@ void FileGenerator::GenerateFieldTransfer(const FileDescriptor* file_descriptor,
 				printer.Print(variables, "jfieldID has_$field_name$_field = env->GetFieldID(cls, \"$java_has_field_name$\", \"Z\");\n");
 				printer.Print(variables, "env->SetBooleanField(obj, has_$field_name$_field, has_$field_name$_cpp);\n\n");
 			}
-			printer.Print(variables, "jobject $field_name$_cpp = cpp2java(env, cpp_obj.$cpp_field_name$());\n");
+			printer.Print(variables, "jobject $field_name$_cpp = cpp2java(cpp_obj.$cpp_field_name$());\n");
 			printer.Print(variables, "jfieldID $field_name$_field = env->GetFieldID(cls, \"$java_field_name$\", \"L$java_binary_type_name$;\");\n");
 			printer.Print(variables, "env->SetObjectField(obj, $field_name$_field, $field_name$_cpp);\n\n");
 		}
